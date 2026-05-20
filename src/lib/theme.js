@@ -37,31 +37,13 @@ export function renderThemeButton(option) {
 }
 
 export function handleThemeClick(event) {
-  const button = event.target.closest("[data-theme-mode]");
-  if (!button) return false;
-  setThemeMode(button.dataset.themeMode);
-  return true;
-}
+  const themeBtn = event.target.closest("[data-theme-mode]");
+  if (themeBtn) {
+    setThemeMode(themeBtn.dataset.themeMode);
+    return true;
+  }
 
-export function getResolvedTheme() {
-  return resolveThemeMode(themeMode);
-}
-
-export function readChartTheme() {
-  const styles = getComputedStyle(root);
-  return {
-    tooltipBackground: readToken(styles, "--chart-tooltip-bg"),
-    tooltipBorder: readToken(styles, "--chart-tooltip-border"),
-    tooltipText: readToken(styles, "--chart-tooltip-text"),
-    mapBase: readToken(styles, "--chart-map-base"),
-    mapBorder: readToken(styles, "--chart-map-border"),
-    mapHover: readToken(styles, "--chart-map-hover"),
-    mapActive: readToken(styles, "--chart-map-active"),
-    city: readToken(styles, "--chart-city"),
-    cityGlow: readToken(styles, "--chart-city-glow"),
-    quizHighlight: readToken(styles, "--chart-quiz-highlight"),
-    quizGlow: readToken(styles, "--chart-quiz-glow"),
-  };
+  return false;
 }
 
 function setThemeMode(nextMode) {
@@ -99,6 +81,21 @@ function resolveThemeMode(mode) {
     return systemThemeQuery.matches ? "dark" : "light";
   }
   return mode;
+}
+
+export function readChartTheme() {
+  const styles = getComputedStyle(root);
+  return {
+    tooltipBackground: readToken(styles, "--chart-tooltip-bg"),
+    tooltipBorder: readToken(styles, "--chart-tooltip-border"),
+    tooltipText: readToken(styles, "--chart-tooltip-text"),
+    mapBase: readToken(styles, "--chart-map-base"),
+    mapBorder: readToken(styles, "--chart-map-border"),
+    mapHover: readToken(styles, "--chart-map-hover"),
+    mapActive: readToken(styles, "--chart-map-active"),
+    quizHighlight: readToken(styles, "--chart-quiz-highlight"),
+    quizGlow: readToken(styles, "--chart-quiz-glow"),
+  };
 }
 
 function readStoredThemeMode() {

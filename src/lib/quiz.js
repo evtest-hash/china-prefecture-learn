@@ -103,7 +103,7 @@ export function submitAnswer(name) {
     correct,
   });
 
-  // Mark as learned if answered correctly
+  // Mark as learned in localStorage (only affects dev mode)
   if (correct) {
     setDivision(quizCurrent.adcode, true);
   }

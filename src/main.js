@@ -1,17 +1,24 @@
 import "./style.css";
-import { divisions, PROVINCE_NAMES } from "./data/divisions.js";
-import { loadLearnedSet, saveLearnedSet } from "./lib/storage.js";
+import { divisions, LEARNED_ADCODES } from "./data/divisions.js";
+import { loadLearnedSet, saveLearnedSet, toggleDivision } from "./lib/storage.js";
 import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } from "./lib/theme.js";
 import { computeStats, renderStats } from "./lib/stats.js";
-import { loadMap, setupResize, renderMap, onChartReady } from "./lib/map.js";
-import { renderSidebar, bindSidebarEvents, syncSidebar, setRefreshCallback as setSidebarRefresh, showSyncToastGlobal } from "./lib/sidebar.js";
-import { getOrCreateId, fetchProgress, mergeWithLocal, scheduleUpload } from "./lib/sync.js";
+import { loadMap, setupResize, renderMap, setToggleCallback, onChartReady } from "./lib/map.js";
 import * as quiz from "./lib/quiz.js";
 
-// Ensure sync ID is set up early
-getOrCreateId();
+// Edit mode: local dev (localhost) allows click-to-toggle + localStorage
+// Production (GitHub Pages) is read-only, uses LEARNED_ADCODES from repo
+const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 
-let learnedSet = loadLearnedSet();
+let learnedSet;
+if (isDev) {
+  // Merge repo data with localStorage (localStorage takes priority)
+  const stored = loadLearnedSet();
+  learnedSet = new Set([...LEARNED_ADCODES, ...stored]);
+} else {
+  learnedSet = new Set(LEARNED_ADCODES);
+}
+
 const stats = computeStats(divisions, learnedSet);
 const statItems = renderStats(stats);
 
@@ -27,6 +34,11 @@ app.innerHTML = `
       </div>
     </div>
     <div class="top-bar-right">
+      ${isDev ? `
+        <button class="icon-btn" id="export-learned" type="button" title="导出已学习列表">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+      ` : ""}
       <button class="icon-btn" id="quiz-toggle" type="button" title="复习模式">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       </button>
@@ -35,25 +47,8 @@ app.innerHTML = `
           ${getThemeButtons().map(renderThemeButton).join("")}
         </div>
       </div>
-      <button class="icon-btn" id="drawer-toggle" type="button" title="列表">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-      </button>
     </div>
   </header>
-
-  <aside class="drawer glass" id="drawer">
-    <div class="drawer-header">
-      <h2 class="drawer-title">地级区划列表</h2>
-      <button class="icon-btn icon-btn-sm" id="drawer-close" type="button" title="关闭">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="drawer-body" id="sidebar-container">
-      ${renderSidebar()}
-    </div>
-  </aside>
-
-  <div class="drawer-backdrop" id="drawer-backdrop"></div>
 
   <div id="quiz-overlay" class="quiz-overlay hidden">
     <div class="quiz-container glass" id="quiz-container"></div>
@@ -61,37 +56,16 @@ app.innerHTML = `
 `;
 
 const mapElement = document.querySelector("#map");
-const sidebarContainer = document.querySelector("#sidebar-container");
 const statsStrip = document.querySelector("#stats-strip");
 const quizToggleBtn = document.querySelector("#quiz-toggle");
 const quizOverlay = document.querySelector("#quiz-overlay");
 const quizContainer = document.querySelector("#quiz-container");
-const drawer = document.querySelector("#drawer");
-const drawerToggle = document.querySelector("#drawer-toggle");
-const drawerClose = document.querySelector("#drawer-close");
-const drawerBackdrop = document.querySelector("#drawer-backdrop");
 
-// Drawer toggle
-function openDrawer() {
-  drawer.classList.add("open");
-  drawerBackdrop.classList.add("active");
+function refreshUI() {
+  const newStats = computeStats(divisions, learnedSet);
+  statsStrip.innerHTML = renderStats(newStats).map(renderStatChip).join("");
+  renderMap(learnedSet, quiz.getQuizHighlight());
 }
-function closeDrawer() {
-  drawer.classList.remove("open");
-  drawerBackdrop.classList.remove("active");
-}
-drawerToggle.addEventListener("click", openDrawer);
-drawerClose.addEventListener("click", closeDrawer);
-drawerBackdrop.addEventListener("click", closeDrawer);
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") {
-    if (quiz.isQuizActive()) {
-      quiz.endQuiz();
-    } else if (drawer.classList.contains("open")) {
-      closeDrawer();
-    }
-  }
-});
 
 // Theme click
 app.addEventListener("click", (event) => {
@@ -100,23 +74,40 @@ app.addEventListener("click", (event) => {
   }
 });
 
-// Sidebar events
-setSidebarRefresh(refreshAll);
-bindSidebarEvents(sidebarContainer, learnedSet);
+// Map click toggle (dev mode only)
+if (isDev) {
+  setToggleCallback((adcode) => {
+    toggleDivision(adcode);
+    learnedSet = loadLearnedSet();
+    // Merge with repo data for display
+    learnedSet = new Set([...LEARNED_ADCODES, ...learnedSet]);
+    refreshUI();
+  });
+
+  // Export button: generates LEARNED_ADCODES content to copy
+  document.querySelector("#export-learned")?.addEventListener("click", () => {
+    const allLearned = [...new Set([...LEARNED_ADCODES, ...loadLearnedSet()])].sort();
+    const content = `export const LEARNED_ADCODES = [\n${allLearned.map((c) => `  "${c}",`).join("\n")}\n];\n`;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(content).then(() => {
+      alert("已复制 LEARNED_ADCODES 到剪贴板，粘贴到 src/data/divisions.js 末尾即可");
+    }).catch(() => {
+      // Fallback: open in new tab
+      const blob = new Blob([content], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      window.open(url);
+    });
+  });
+}
 
 // Quiz
 quiz.setCallbacks(
   () => {
-    learnedSet = loadLearnedSet();
-    const newStats = computeStats(divisions, learnedSet);
-    statsStrip.innerHTML = renderStats(newStats).map(renderStatChip).join("");
     renderQuizOverlay();
     renderMap(learnedSet, quiz.getQuizHighlight());
   },
   () => {
-    learnedSet = loadLearnedSet();
-    const newStats = computeStats(divisions, learnedSet);
-    statsStrip.innerHTML = renderStats(newStats).map(renderStatChip).join("");
     hideQuizOverlay();
     renderMap(learnedSet);
   },
@@ -138,40 +129,11 @@ setupResize(mapElement);
 
 onChartReady(() => {
   renderMap(learnedSet);
-
-  // Auto-download and merge on page load
-  fetchProgress().then((remoteData) => {
-    const merged = mergeWithLocal(learnedSet, remoteData);
-    if (merged.size !== learnedSet.size) {
-      saveLearnedSet(merged);
-      learnedSet = merged;
-      refreshUI();
-    }
-  });
 });
 
 onThemeChange(() => {
   renderMap(learnedSet, quiz.getQuizHighlight());
 });
-
-function refreshAll() {
-  learnedSet = loadLearnedSet();
-  refreshUI();
-
-  scheduleUpload(
-    [...learnedSet],
-    () => showSyncToastGlobal(sidebarContainer, "已同步", "success"),
-    (msg) => showSyncToastGlobal(sidebarContainer, msg, "error"),
-  );
-}
-
-function refreshUI() {
-  const newStats = computeStats(divisions, learnedSet);
-  const items = renderStats(newStats);
-  statsStrip.innerHTML = items.map(renderStatChip).join("");
-  syncSidebar(sidebarContainer, learnedSet);
-  renderMap(learnedSet, quiz.getQuizHighlight());
-}
 
 function showQuizOverlay() {
   quizOverlay.classList.remove("hidden");
@@ -189,7 +151,6 @@ function hideQuizOverlay() {
 
 function renderQuizOverlay() {
   const state = quiz.getQuizState();
-  // When quiz is active (not start screen), remove backdrop so map is visible
   if (state.active) {
     quizOverlay.classList.remove("quiz-start-overlay");
   } else {

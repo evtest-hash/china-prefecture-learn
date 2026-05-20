@@ -1,6 +1,9 @@
 name = "china-prefecture-learn"
 compatibility_date = "2024-01-01"
 
+[assets]
+directory = "./dist"
+
 [[kv_namespaces]]
 binding = "PROGRESS"
 id = "0fce7b08ce334973acd5f2c910fbe703"

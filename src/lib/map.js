@@ -14,14 +14,9 @@ let chartReady = false;
 let mapLoaded = false;
 let mapInitInFlight = false;
 let resizeFrame = 0;
-let onToggleCallback = null;
 
 const nameToAdcode = new Map();
-const provinceBounds = new Map(); // provinceAdcode → { minLng, maxLng, minLat, maxLat, center }
-
-export function setToggleCallback(fn) {
-  onToggleCallback = fn;
-}
+const provinceBounds = new Map();
 
 export async function loadMap(mapElement) {
   try {
@@ -243,16 +238,8 @@ export function renderMap(learnedSet, quizHighlight = null) {
     }
   }
 
-  // Click handler
+  // No click handler in display-only mode
   chart.off("click");
-  chart.on("click", (params) => {
-    if (quizHighlight) return;
-    if (params.componentType !== "geo") return;
-    const adcode = nameToAdcode.get(params.name);
-    if (adcode && onToggleCallback) {
-      onToggleCallback(adcode, params.name);
-    }
-  });
 
   const option = {
     backgroundColor: "transparent",

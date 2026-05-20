@@ -1,5 +1,5 @@
 import { divisions, PROVINCE_NAMES } from "../data/divisions.js";
-import { exportData, importData, loadLearnedSet, setDivision, setAllDivisions } from "./storage.js";
+import { exportData, importData, loadLearnedSet } from "./storage.js";
 
 let onRefreshCallback = null;
 let searchTerm = "";
@@ -10,6 +10,7 @@ export function setRefreshCallback(fn) {
 
 export function renderSidebar() {
   const grouped = groupByProvince();
+  const currentSet = loadLearnedSet();
 
   return `
     <div class="sidebar-header">
@@ -26,7 +27,7 @@ export function renderSidebar() {
     <div class="sync-toast" id="sync-toast" hidden></div>
     <div class="sidebar-groups" id="sidebar-groups">
       ${Object.entries(grouped)
-        .map(([adcode, items]) => renderProvinceGroup(adcode, items))
+        .map(([adcode, items]) => renderProvinceGroup(adcode, items, currentSet))
         .join("")}
     </div>
   `;
@@ -47,56 +48,34 @@ function groupByProvince() {
   return map;
 }
 
-function renderProvinceGroup(provinceAdcode, items) {
+function renderProvinceGroup(provinceAdcode, items, learnedSet) {
   const provinceName = PROVINCE_NAMES[provinceAdcode] || provinceAdcode;
+  const learnedCount = items.filter((d) => learnedSet.has(d.adcode)).length;
 
   return `
     <details class="province-group">
       <summary class="province-summary">
         <span class="province-name">${provinceName}</span>
-        <span class="province-count">${items.length}</span>
-        <button class="province-check-all" data-province-check="${provinceAdcode}" type="button" title="全选/取消全选">全选</button>
+        <span class="province-count">${learnedCount}/${items.length}</span>
       </summary>
       <div class="province-items">
-        ${items.map((d) => renderCheckItem(d)).join("")}
+        ${items.map((d) => renderLearnItem(d, learnedSet)).join("")}
       </div>
     </details>
   `;
 }
 
-function renderCheckItem(d) {
+function renderLearnItem(d, learnedSet) {
+  const learned = learnedSet.has(d.adcode);
   return `
-    <label class="check-item">
-      <input type="checkbox" data-adcode="${d.adcode}" />
-      <span class="check-name">${d.name}</span>
-    </label>
+    <div class="learn-item ${learned ? "learn-item--learned" : ""}" data-adcode="${d.adcode}">
+      <span class="learn-dot"></span>
+      <span class="learn-name">${d.name}</span>
+    </div>
   `;
 }
 
 export function bindSidebarEvents(container, learnedSet) {
-  // Checkbox changes
-  container.addEventListener("change", (event) => {
-    const checkbox = event.target;
-    if (!checkbox.dataset.adcode) return;
-    setDivision(checkbox.dataset.adcode, checkbox.checked);
-    if (onRefreshCallback) onRefreshCallback();
-  });
-
-  // Check-all buttons
-  container.addEventListener("click", (event) => {
-    const btn = event.target.closest("[data-province-check]");
-    if (!btn) return;
-    event.stopPropagation();
-    const adcode = btn.dataset.provinceCheck;
-    const group = btn.closest("details");
-    if (!group) return;
-    const checkboxes = group.querySelectorAll('[data-adcode]');
-    const allChecked = [...checkboxes].every((cb) => cb.checked);
-    const adcodes = [...checkboxes].map((cb) => cb.dataset.adcode);
-    setAllDivisions(adcodes, !allChecked);
-    if (onRefreshCallback) onRefreshCallback();
-  });
-
   // Search
   const searchInput = container.querySelector("#sidebar-search");
   if (searchInput) {
@@ -146,14 +125,25 @@ export function bindSidebarEvents(container, learnedSet) {
       showSyncToast(container, "复制失败", "error");
     }
   });
-
-  syncSidebar(container, learnedSet);
 }
 
 export function syncSidebar(container, learnedSet) {
-  const checkboxes = container.querySelectorAll("[data-adcode]");
-  checkboxes.forEach((cb) => {
-    cb.checked = learnedSet.has(cb.dataset.adcode);
+  const items = container.querySelectorAll("[data-adcode]");
+  items.forEach((el) => {
+    const learned = learnedSet.has(el.dataset.adcode);
+    el.classList.toggle("learn-item--learned", learned);
+  });
+
+  // Update province counts
+  container.querySelectorAll(".province-summary").forEach((summary) => {
+    const group = summary.closest(".province-group");
+    if (!group) return;
+    const allItems = group.querySelectorAll("[data-adcode]");
+    const learnedCount = [...allItems].filter((el) =>
+      learnedSet.has(el.dataset.adcode)
+    ).length;
+    const countEl = summary.querySelector(".province-count");
+    if (countEl) countEl.textContent = `${learnedCount}/${allItems.length}`;
   });
 }
 
@@ -165,12 +155,10 @@ function refreshSidebar(container) {
   const groupsEl = container.querySelector("#sidebar-groups");
   if (!groupsEl) return;
   const grouped = groupByProvince();
-  groupsEl.innerHTML = Object.entries(grouped)
-    .map(([adcode, items]) => renderProvinceGroup(adcode, items))
-    .join("");
-
   const currentSet = loadLearnedSet();
-  syncSidebar(container, currentSet);
+  groupsEl.innerHTML = Object.entries(grouped)
+    .map(([adcode, items]) => renderProvinceGroup(adcode, items, currentSet))
+    .join("");
 }
 
 let toastTimer = 0;

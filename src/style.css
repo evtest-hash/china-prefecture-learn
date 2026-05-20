@@ -366,14 +366,6 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
   padding: 2px 8px;
   border-radius: 999px;
 }
-.province-check-all {
-  font-size: 11px;
-  color: var(--accent);
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: background 180ms ease;
-}
-.province-check-all:hover { background: var(--accent-soft); }
 
 .province-items {
   display: grid;
@@ -381,19 +373,29 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
   gap: 1px;
   padding: 2px 10px 6px;
 }
-.check-item {
+.learn-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 4px 8px;
   border-radius: 8px;
   font-size: 13px;
-  cursor: pointer;
-  transition: background 180ms ease;
+  color: var(--text-muted);
 }
-.check-item:hover { background: var(--hover-bg); }
-.check-item input[type="checkbox"] { accent-color: var(--accent); width: 14px; height: 14px; }
-.check-name {
+.learn-item--learned {
+  color: var(--text);
+}
+.learn-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hover-bg);
+  flex-shrink: 0;
+}
+.learn-item--learned .learn-dot {
+  background: var(--accent);
+}
+.learn-name {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

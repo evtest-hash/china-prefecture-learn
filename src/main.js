@@ -5,8 +5,11 @@ import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } f
 import { computeStats, renderStats } from "./lib/stats.js";
 import { loadMap, setupResize, renderMap, setToggleCallback, onChartReady } from "./lib/map.js";
 import { renderSidebar, bindSidebarEvents, syncSidebar, setRefreshCallback as setSidebarRefresh, showSyncToastGlobal } from "./lib/sidebar.js";
-import { isSyncConfigured, autoDownload, scheduleUpload } from "./lib/gist-sync.js";
+import { getOrCreateId, fetchProgress, mergeWithLocal, scheduleUpload } from "./lib/sync.js";
 import * as quiz from "./lib/quiz.js";
+
+// Ensure sync ID is set up early
+getOrCreateId();
 
 let learnedSet = loadLearnedSet();
 const stats = computeStats(divisions, learnedSet);
@@ -142,16 +145,15 @@ setupResize(mapElement);
 onChartReady(() => {
   renderMap(learnedSet);
 
-  // Auto-download on page load if sync is configured
-  if (isSyncConfigured()) {
-    autoDownload(learnedSet).then((result) => {
-      if (result && result.merged.size !== learnedSet.size) {
-        saveLearnedSet(result.merged);
-        learnedSet = result.merged;
-        refreshUI();
-      }
-    });
-  }
+  // Auto-download and merge on page load
+  fetchProgress().then((remoteData) => {
+    const merged = mergeWithLocal(learnedSet, remoteData);
+    if (merged.size !== learnedSet.size) {
+      saveLearnedSet(merged);
+      learnedSet = merged;
+      refreshUI();
+    }
+  });
 });
 
 onThemeChange(() => {
@@ -162,14 +164,11 @@ function refreshAll() {
   learnedSet = loadLearnedSet();
   refreshUI();
 
-  // Debounced auto-upload on any change
-  if (isSyncConfigured()) {
-    scheduleUpload(
-      [...learnedSet],
-      () => showSyncToastGlobal(sidebarContainer, "已同步", "success"),
-      (msg) => showSyncToastGlobal(sidebarContainer, msg, "error"),
-    );
-  }
+  scheduleUpload(
+    [...learnedSet],
+    () => showSyncToastGlobal(sidebarContainer, "已同步", "success"),
+    (msg) => showSyncToastGlobal(sidebarContainer, msg, "error"),
+  );
 }
 
 function refreshUI() {

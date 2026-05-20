@@ -1,5 +1,6 @@
 import { divisions, PROVINCE_NAMES } from "../data/divisions.js";
 import { exportData, importData, loadLearnedSet, setDivision, setAllDivisions } from "./storage.js";
+import { getSyncConfig, saveSyncConfig, clearSyncConfig } from "./gist-sync.js";
 
 let onRefreshCallback = null;
 let searchTerm = "";
@@ -20,8 +21,21 @@ export function renderSidebar() {
         <button class="sidebar-action-btn" id="btn-export" type="button">导出</button>
         <button class="sidebar-action-btn" id="btn-import" type="button">导入</button>
         <input type="file" id="import-file" accept=".json" hidden />
+        <button class="sidebar-action-btn" id="btn-sync-settings" type="button">同步设置</button>
       </div>
     </div>
+    <div class="sync-settings" id="sync-settings" hidden>
+      <label class="sync-field">
+        <span>GitHub Token</span>
+        <input type="password" id="sync-token-input" placeholder="ghp_..." />
+      </label>
+      <div class="sync-settings-actions">
+        <button class="sidebar-action-btn" id="btn-sync-save" type="button">保存设置</button>
+        <button class="sidebar-action-btn" id="btn-sync-clear" type="button">清除</button>
+      </div>
+      <span class="sync-hint">建议使用仅有 gist 权限的 Token</span>
+    </div>
+    <div class="sync-toast" id="sync-toast" hidden></div>
     <div class="sidebar-groups" id="sidebar-groups">
       ${Object.entries(grouped)
         .map(([adcode, items]) => renderProvinceGroup(adcode, items))
@@ -135,6 +149,34 @@ export function bindSidebarEvents(container, learnedSet) {
     });
   }
 
+  // Sync settings toggle
+  container.querySelector("#btn-sync-settings")?.addEventListener("click", () => {
+    const panel = container.querySelector("#sync-settings");
+    if (!panel) return;
+    const showing = panel.hidden;
+    panel.hidden = !showing;
+    if (showing) {
+      const config = getSyncConfig();
+      const tokenInput = container.querySelector("#sync-token-input");
+      if (tokenInput) tokenInput.value = config.token || "";
+    }
+  });
+
+  // Sync save settings
+  container.querySelector("#btn-sync-save")?.addEventListener("click", () => {
+    const tokenInput = container.querySelector("#sync-token-input");
+    saveSyncConfig({ token: tokenInput?.value.trim() || "" });
+    showSyncToast(container, "设置已保存", "success");
+  });
+
+  // Sync clear
+  container.querySelector("#btn-sync-clear")?.addEventListener("click", () => {
+    clearSyncConfig();
+    const tokenInput = container.querySelector("#sync-token-input");
+    if (tokenInput) tokenInput.value = "";
+    showSyncToast(container, "同步设置已清除", "success");
+  });
+
   syncSidebar(container, learnedSet);
 }
 
@@ -143,6 +185,10 @@ export function syncSidebar(container, learnedSet) {
   checkboxes.forEach((cb) => {
     cb.checked = learnedSet.has(cb.dataset.adcode);
   });
+}
+
+export function showSyncToastGlobal(container, message, type) {
+  showSyncToast(container, message, type);
 }
 
 function refreshSidebar(container) {
@@ -156,4 +202,16 @@ function refreshSidebar(container) {
   // Re-sync checkboxes with current learnedSet from storage
   const currentSet = loadLearnedSet();
   syncSidebar(container, currentSet);
+}
+
+let toastTimer = 0;
+
+function showSyncToast(container, message, type) {
+  const toast = container.querySelector("#sync-toast");
+  if (!toast) return;
+  toast.textContent = message;
+  toast.className = `sync-toast sync-toast--${type}`;
+  toast.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 3000);
 }

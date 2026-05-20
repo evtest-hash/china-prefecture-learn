@@ -1,10 +1,11 @@
 import "./style.css";
 import { divisions, PROVINCE_NAMES } from "./data/divisions.js";
-import { loadLearnedSet, toggleDivision } from "./lib/storage.js";
+import { loadLearnedSet, saveLearnedSet, toggleDivision } from "./lib/storage.js";
 import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } from "./lib/theme.js";
 import { computeStats, renderStats } from "./lib/stats.js";
 import { loadMap, setupResize, renderMap, setToggleCallback, onChartReady } from "./lib/map.js";
-import { renderSidebar, bindSidebarEvents, syncSidebar, setRefreshCallback as setSidebarRefresh } from "./lib/sidebar.js";
+import { renderSidebar, bindSidebarEvents, syncSidebar, setRefreshCallback as setSidebarRefresh, showSyncToastGlobal } from "./lib/sidebar.js";
+import { isSyncConfigured, autoDownload, scheduleUpload } from "./lib/gist-sync.js";
 import * as quiz from "./lib/quiz.js";
 
 let learnedSet = loadLearnedSet();
@@ -140,6 +141,17 @@ setupResize(mapElement);
 
 onChartReady(() => {
   renderMap(learnedSet);
+
+  // Auto-download on page load if sync is configured
+  if (isSyncConfigured()) {
+    autoDownload(learnedSet).then((result) => {
+      if (result && result.merged.size !== learnedSet.size) {
+        saveLearnedSet(result.merged);
+        learnedSet = result.merged;
+        refreshUI();
+      }
+    });
+  }
 });
 
 onThemeChange(() => {
@@ -148,6 +160,19 @@ onThemeChange(() => {
 
 function refreshAll() {
   learnedSet = loadLearnedSet();
+  refreshUI();
+
+  // Debounced auto-upload on any change
+  if (isSyncConfigured()) {
+    scheduleUpload(
+      [...learnedSet],
+      () => showSyncToastGlobal(sidebarContainer, "已同步", "success"),
+      (msg) => showSyncToastGlobal(sidebarContainer, msg, "error"),
+    );
+  }
+}
+
+function refreshUI() {
   const newStats = computeStats(divisions, learnedSet);
   const items = renderStats(newStats);
   statsStrip.innerHTML = items.map(renderStatChip).join("");

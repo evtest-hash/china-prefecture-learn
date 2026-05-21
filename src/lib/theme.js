@@ -12,6 +12,7 @@ const validThemeModes = new Set([DEFAULT_THEME_MODE, ...themeModeButtons.map((b)
 
 let themeMode = readStoredThemeMode();
 let onThemeChangeCallback = null;
+let cachedChartTheme = null;
 
 applyThemeState({ persist: false });
 
@@ -56,6 +57,7 @@ function applyThemeState({ persist = true } = {}) {
   const resolved = resolveThemeMode(themeMode);
   root.dataset.theme = resolved;
   root.style.colorScheme = resolved;
+  cachedChartTheme = null;
 
   if (persist) {
     writeStoredChoice(THEME_STORAGE_KEY, themeMode);
@@ -84,8 +86,9 @@ function resolveThemeMode(mode) {
 }
 
 export function readChartTheme() {
+  if (cachedChartTheme) return cachedChartTheme;
   const styles = getComputedStyle(root);
-  return {
+  cachedChartTheme = {
     tooltipBackground: readToken(styles, "--chart-tooltip-bg"),
     tooltipBorder: readToken(styles, "--chart-tooltip-border"),
     tooltipText: readToken(styles, "--chart-tooltip-text"),
@@ -96,6 +99,7 @@ export function readChartTheme() {
     quizHighlight: readToken(styles, "--chart-quiz-highlight"),
     quizGlow: readToken(styles, "--chart-quiz-glow"),
   };
+  return cachedChartTheme;
 }
 
 function readStoredThemeMode() {

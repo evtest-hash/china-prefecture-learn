@@ -1,6 +1,6 @@
 import "./style.css";
 import { divisions, LEARNED_ADCODES } from "./data/divisions.js";
-import { loadLearnedSet, saveLearnedSet, toggleDivision } from "./lib/storage.js";
+import { mergedLearnedSet, toggleDivision } from "./lib/storage.js";
 import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } from "./lib/theme.js";
 import { computeStats, renderStats } from "./lib/stats.js";
 import { loadMap, setupResize, renderMap, setToggleCallback, onChartReady } from "./lib/map.js";
@@ -12,9 +12,7 @@ const isDev = location.hostname === "localhost" || location.hostname === "127.0.
 
 let learnedSet;
 if (isDev) {
-  // Merge repo data with localStorage (localStorage takes priority)
-  const stored = loadLearnedSet();
-  learnedSet = new Set([...LEARNED_ADCODES, ...stored]);
+  learnedSet = mergedLearnedSet();
 } else {
   learnedSet = new Set(LEARNED_ADCODES);
 }
@@ -78,15 +76,13 @@ app.addEventListener("click", (event) => {
 if (isDev) {
   setToggleCallback((adcode) => {
     toggleDivision(adcode);
-    learnedSet = loadLearnedSet();
-    // Merge with repo data for display
-    learnedSet = new Set([...LEARNED_ADCODES, ...learnedSet]);
+    learnedSet = mergedLearnedSet();
     refreshUI();
   });
 
   // Export button: generates LEARNED_ADCODES content to copy
   document.querySelector("#export-learned")?.addEventListener("click", () => {
-    const allLearned = [...new Set([...LEARNED_ADCODES, ...loadLearnedSet()])].sort();
+    const allLearned = [...mergedLearnedSet()].sort();
     const content = `export const LEARNED_ADCODES = [\n${allLearned.map((c) => `  "${c}",`).join("\n")}\n];\n`;
 
     // Copy to clipboard

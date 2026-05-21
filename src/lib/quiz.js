@@ -40,15 +40,11 @@ export function startQuizProvince(provinceAdcode) {
   const pool = divisions.filter((d) => d.provinceAdcode === provinceAdcode);
   if (pool.length === 0) return;
 
+  resetQuizState();
   quizActive = true;
   quizMode = "province";
   quizProvinceAdcode = provinceAdcode;
   quizPool = shuffle([...pool]);
-  quizUsed = new Set();
-  quizResults = [];
-  quizTotal = 0;
-  quizCorrect = 0;
-  quizAnswered = false;
 
   nextQuestion();
 }
@@ -56,15 +52,10 @@ export function startQuizProvince(provinceAdcode) {
 export function startQuizAll() {
   if (divisions.length === 0) return;
 
+  resetQuizState();
   quizActive = true;
   quizMode = "all";
-  quizProvinceAdcode = null;
   quizPool = shuffle([...divisions]);
-  quizUsed = new Set();
-  quizResults = [];
-  quizTotal = 0;
-  quizCorrect = 0;
-  quizAnswered = false;
 
   nextQuestion();
 }
@@ -128,14 +119,11 @@ export function skipQuestion() {
 }
 
 export function endQuiz() {
+  resetQuizState();
   quizActive = false;
   quizMode = null;
   quizProvinceAdcode = null;
   quizPool = [];
-  quizUsed = new Set();
-  quizResults = [];
-  quizCurrent = null;
-  quizAnswered = false;
 
   if (onEndCallback) onEndCallback();
 }
@@ -285,6 +273,15 @@ export function bindQuizEvents(container) {
       if (submitBtn) submitBtn.click();
     }
   });
+}
+
+function resetQuizState() {
+  quizUsed = new Set();
+  quizResults = [];
+  quizCurrent = null;
+  quizTotal = 0;
+  quizCorrect = 0;
+  quizAnswered = false;
 }
 
 function shortName(name) {

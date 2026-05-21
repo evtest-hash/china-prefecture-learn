@@ -1,3 +1,5 @@
+import { LEARNED_ADCODES } from "../data/divisions.js";
+
 const STORAGE_KEY = "prefecture-learned";
 
 export function loadLearnedSet() {
@@ -37,4 +39,8 @@ export function setDivision(adcode, learned) {
     set.delete(adcode);
   }
   saveLearnedSet(set);
+}
+
+export function mergedLearnedSet() {
+  return new Set([...LEARNED_ADCODES, ...loadLearnedSet()]);
 }

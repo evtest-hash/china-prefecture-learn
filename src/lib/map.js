@@ -15,6 +15,7 @@ let mapLoaded = false;
 let mapInitInFlight = false;
 let resizeFrame = 0;
 let onToggleCallback = null;
+let currentQuizHighlight = null;
 
 const nameToAdcode = new Map();
 const provinceBounds = new Map();
@@ -38,13 +39,7 @@ export async function loadMap(mapElement) {
         nameToAdcode.set(props.name, String(props.adcode));
       }
 
-      // For municipalities/SARs, parent.adcode is 100000 — use their own adcode instead
-      const rawParent = String(props.parent?.adcode ?? "");
-      const provAdcode = rawParent !== "100000" && PROVINCE_ADCODES.has(rawParent)
-        ? rawParent
-        : PROVINCE_ADCODES.has(String(props.adcode))
-          ? String(props.adcode)
-          : rawParent;
+      const provAdcode = resolveProvinceAdcode(props);
       if (!provFeatures.has(provAdcode)) {
         provFeatures.set(provAdcode, []);
       }
@@ -109,6 +104,14 @@ async function initChart(mapElement) {
   try {
     await waitForContainer(mapElement);
     chart = echarts.init(mapElement, null, { renderer: "canvas" });
+    chart.on("click", (params) => {
+      if (currentQuizHighlight) return;
+      if (params.componentType !== "geo") return;
+      const adcode = nameToAdcode.get(params.name);
+      if (adcode && onToggleCallback) {
+        onToggleCallback(adcode, params.name);
+      }
+    });
     chartReady = true;
 
     if (onChartReadyCallback) onChartReadyCallback();
@@ -188,6 +191,7 @@ function getProvinceZoom(provinceAdcode) {
 export function renderMap(learnedSet, quizHighlight = null) {
   if (!chart) return;
 
+  currentQuizHighlight = quizHighlight;
   const theme = readChartTheme();
   const defaultLayout = getDefaultLayout();
 
@@ -221,7 +225,7 @@ export function renderMap(learnedSet, quizHighlight = null) {
     } else if (quizHighlight && quizHighlight.provinceAdcode) {
       // In quiz mode: dim regions outside the target province
       const feature = findFeature(name);
-      const regionProvAdcode = feature ? getFeatureProvinceAdcode(feature) : "";
+      const regionProvAdcode = feature ? resolveProvinceAdcode(feature.properties) : "";
       const inTargetProvince = regionProvAdcode === quizHighlight.provinceAdcode;
 
       if (inTargetProvince) {
@@ -242,17 +246,6 @@ export function renderMap(learnedSet, quizHighlight = null) {
       });
     }
   }
-
-  // Click handler
-  chart.off("click");
-  chart.on("click", (params) => {
-    if (quizHighlight) return;
-    if (params.componentType !== "geo") return;
-    const adcode = nameToAdcode.get(params.name);
-    if (adcode && onToggleCallback) {
-      onToggleCallback(adcode, params.name);
-    }
-  });
 
   const option = {
     backgroundColor: "transparent",
@@ -332,10 +325,10 @@ function findFeature(name) {
   return featureByName.get(name);
 }
 
-function getFeatureProvinceAdcode(feature) {
-  const rawParent = String(feature.properties.parent?.adcode ?? "");
+function resolveProvinceAdcode(props) {
+  const rawParent = String(props.parent?.adcode ?? "");
   if (rawParent !== "100000" && PROVINCE_ADCODES.has(rawParent)) return rawParent;
-  const ownAdcode = String(feature.properties.adcode);
+  const ownAdcode = String(props.adcode);
   if (PROVINCE_ADCODES.has(ownAdcode)) return ownAdcode;
   return rawParent;
 }

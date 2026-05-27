@@ -145,6 +145,8 @@ function hideQuizOverlay() {
   quizContainer.innerHTML = "";
 }
 
+let wrongAutoNextTimer = null;
+
 function renderQuizOverlay() {
   const state = quiz.getQuizState();
   if (state.active) {
@@ -152,9 +154,22 @@ function renderQuizOverlay() {
   } else {
     quizOverlay.classList.add("quiz-start-overlay");
   }
+
+  clearTimeout(wrongAutoNextTimer);
+  wrongAutoNextTimer = null;
+
   quizContainer.innerHTML = quiz.renderQuizUI();
   const input = quizContainer.querySelector("#quiz-answer");
   if (input) input.focus();
+
+  if (state.active && state.answered && state.current) {
+    const lastResult = state.results[state.results.length - 1];
+    if (lastResult && !lastResult.correct) {
+      wrongAutoNextTimer = setTimeout(() => {
+        quiz.nextQuestion();
+      }, 3000);
+    }
+  }
 }
 
 function renderStatChip(item) {

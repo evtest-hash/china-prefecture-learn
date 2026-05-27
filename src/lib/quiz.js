@@ -175,12 +175,21 @@ export function renderQuizUI() {
   const scoreText = `${quizCorrect}/${quizTotal} · 剩余 ${remaining}`;
 
   if (quizAnswered) {
+    const lastResult = quizResults[quizResults.length - 1];
+    const isCorrect = lastResult && lastResult.correct;
+    const feedbackIcon = isCorrect
+      ? `<div class="quiz-feedback-icon quiz-feedback-correct"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>`
+      : `<div class="quiz-feedback-icon quiz-feedback-wrong"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>`;
+    const feedbackText = isCorrect ? "回答正确" : "回答错误";
+
     return `
       <div class="quiz-panel quiz-feedback">
         <div class="quiz-score">得分：${scoreText}</div>
-        <div class="quiz-answer-reveal">
-          正确答案：<strong>${quizCurrent.name}</strong>
+        <div class="quiz-answer-feedback ${isCorrect ? "feedback-correct" : "feedback-wrong"}">
+          ${feedbackIcon}
+          <span class="quiz-feedback-text">${feedbackText}</span>
         </div>
+        ${!isCorrect ? `<div class="quiz-answer-reveal">正确答案：<strong>${quizCurrent.name}</strong></div>` : ""}
         <button class="quiz-btn quiz-btn-next" type="button" id="quiz-next">下一题</button>
         <button class="quiz-btn quiz-btn-end" type="button" id="quiz-end">结束复习</button>
       </div>

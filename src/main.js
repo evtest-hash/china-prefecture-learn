@@ -109,7 +109,7 @@ quiz.setCallbacks(
   },
 );
 
-quiz.bindQuizEvents(quizOverlay);
+quiz.bindQuizEvents(quizOverlay, () => learnedSet);
 
 quizToggleBtn.addEventListener("click", () => {
   if (quiz.isQuizActive()) {

@@ -49,13 +49,16 @@ export function startQuizProvince(provinceAdcode) {
   nextQuestion();
 }
 
-export function startQuizAll() {
-  if (divisions.length === 0) return;
+export function startQuizAll(learnedSet) {
+  const pool = learnedSet
+    ? divisions.filter((d) => learnedSet.has(d.adcode))
+    : divisions;
+  if (pool.length === 0) return;
 
   resetQuizState();
   quizActive = true;
   quizMode = "all";
-  quizPool = shuffle([...divisions]);
+  quizPool = shuffle([...pool]);
 
   nextQuestion();
 }
@@ -233,12 +236,12 @@ function renderQuizStartUI() {
   `;
 }
 
-export function bindQuizEvents(container) {
+export function bindQuizEvents(container, getLearnedSet) {
   container.addEventListener("click", (event) => {
     const target = event.target;
 
     if (target.id === "quiz-start-all") {
-      startQuizAll();
+      startQuizAll(getLearnedSet ? getLearnedSet() : null);
       return;
     }
 

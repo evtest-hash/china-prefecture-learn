@@ -1,5 +1,4 @@
 import { divisions, PROVINCE_NAMES } from "../data/divisions.js";
-import { setDivision } from "./storage.js";
 
 let quizActive = false;
 let quizMode = null; // "province" | "all"
@@ -96,11 +95,6 @@ export function submitAnswer(name) {
     name: quizCurrent.name,
     correct,
   });
-
-  // Mark as learned in localStorage (only affects dev mode)
-  if (correct) {
-    setDivision(quizCurrent.adcode, true);
-  }
 
   if (onRenderCallback) onRenderCallback();
 

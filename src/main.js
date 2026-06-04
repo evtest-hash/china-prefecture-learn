@@ -1,21 +1,11 @@
 import "./style.css";
 import { divisions, LEARNED_ADCODES } from "./data/divisions.js";
-import { mergedLearnedSet, toggleDivision } from "./lib/storage.js";
 import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } from "./lib/theme.js";
 import { computeStats, renderStats } from "./lib/stats.js";
-import { loadMap, setupResize, renderMap, setToggleCallback, onChartReady } from "./lib/map.js";
+import { loadMap, setupResize, renderMap, onChartReady } from "./lib/map.js";
 import * as quiz from "./lib/quiz.js";
 
-// Edit mode: local dev (localhost) allows click-to-toggle + localStorage
-// Production (GitHub Pages) is read-only, uses LEARNED_ADCODES from repo
-const isDev = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-
-let learnedSet;
-if (isDev) {
-  learnedSet = mergedLearnedSet();
-} else {
-  learnedSet = new Set(LEARNED_ADCODES);
-}
+const learnedSet = new Set(LEARNED_ADCODES);
 
 const stats = computeStats(divisions, learnedSet);
 const statItems = renderStats(stats);
@@ -32,11 +22,6 @@ app.innerHTML = `
       </div>
     </div>
     <div class="top-bar-right">
-      ${isDev ? `
-        <button class="icon-btn" id="export-learned" type="button" title="导出已学习列表">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
-      ` : ""}
       <button class="icon-btn" id="quiz-toggle" type="button" title="复习模式">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       </button>
@@ -71,31 +56,6 @@ app.addEventListener("click", (event) => {
     renderMap(learnedSet, quiz.getQuizHighlight());
   }
 });
-
-// Map click toggle (dev mode only)
-if (isDev) {
-  setToggleCallback((adcode) => {
-    toggleDivision(adcode);
-    learnedSet = mergedLearnedSet();
-    refreshUI();
-  });
-
-  // Export button: generates LEARNED_ADCODES content to copy
-  document.querySelector("#export-learned")?.addEventListener("click", () => {
-    const allLearned = [...mergedLearnedSet()].sort();
-    const content = `export const LEARNED_ADCODES = [\n${allLearned.map((c) => `  "${c}",`).join("\n")}\n];\n`;
-
-    // Copy to clipboard
-    navigator.clipboard.writeText(content).then(() => {
-      alert("已复制 LEARNED_ADCODES 到剪贴板，粘贴到 src/data/divisions.js 末尾即可");
-    }).catch(() => {
-      // Fallback: open in new tab
-      const blob = new Blob([content], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      window.open(url);
-    });
-  });
-}
 
 // Quiz
 quiz.setCallbacks(

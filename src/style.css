@@ -457,6 +457,103 @@ button { cursor: pointer; border: none; background: none; color: inherit; }
   border-color: var(--glass-border);
 }
 
+/* ── Info panel ── */
+.info-panel {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 30;
+  max-width: 360px;
+  width: calc(100vw - 48px);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  animation: info-slide-up 300ms ease both;
+}
+
+.info-panel.hidden { display: none; }
+
+.info-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.info-panel-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.info-panel-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: var(--text-muted);
+  transition: background 180ms ease, color 180ms ease;
+}
+.info-panel-close:hover {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+
+.info-panel-body {
+  margin-bottom: 10px;
+}
+
+.info-extract {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+.info-extract-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.info-panel-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.info-wiki-link {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity 180ms ease;
+}
+.info-wiki-link:hover {
+  opacity: 0.75;
+}
+
+@keyframes info-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 760px) {
+  .info-panel {
+    bottom: 12px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+    width: auto;
+  }
+}
+
 /* ── Map error ── */
 .map-error {
   display: grid;

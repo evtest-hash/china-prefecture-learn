@@ -15,9 +15,14 @@ let mapLoaded = false;
 let mapInitInFlight = false;
 let resizeFrame = 0;
 let currentQuizHighlight = null;
+let onRegionClickCallback = null;
 
 const nameToAdcode = new Map();
 const provinceBounds = new Map();
+
+export function setRegionClickCallback(fn) {
+  onRegionClickCallback = fn;
+}
 
 export async function loadMap(mapElement) {
   try {
@@ -99,6 +104,14 @@ async function initChart(mapElement) {
   try {
     await waitForContainer(mapElement);
     chart = echarts.init(mapElement, null, { renderer: "canvas" });
+    chart.on("click", (params) => {
+      if (currentQuizHighlight) return;
+      if (params.componentType !== "geo") return;
+      const adcode = nameToAdcode.get(params.name);
+      if (adcode && onRegionClickCallback) {
+        onRegionClickCallback(adcode, params.name);
+      }
+    });
     chartReady = true;
 
     if (onChartReadyCallback) onChartReadyCallback();

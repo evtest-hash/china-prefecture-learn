@@ -2,7 +2,8 @@ import "./style.css";
 import { divisions, LEARNED_ADCODES } from "./data/divisions.js";
 import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } from "./lib/theme.js";
 import { computeStats, renderStats } from "./lib/stats.js";
-import { loadMap, setupResize, renderMap, onChartReady } from "./lib/map.js";
+import { loadMap, setupResize, renderMap, setRegionClickCallback, onChartReady } from "./lib/map.js";
+import { loadWikiSummaries, getWikiSummary } from "./lib/wiki.js";
 import * as quiz from "./lib/quiz.js";
 
 const learnedSet = new Set(LEARNED_ADCODES);
@@ -36,6 +37,17 @@ app.innerHTML = `
   <div id="quiz-overlay" class="quiz-overlay hidden">
     <div class="quiz-container glass" id="quiz-container"></div>
   </div>
+
+  <div id="info-panel" class="info-panel glass hidden">
+    <div class="info-panel-header">
+      <h2 class="info-panel-title" id="info-title"></h2>
+      <button class="info-panel-close" id="info-close" type="button" aria-label="关闭">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="info-panel-body" id="info-body"></div>
+    <div class="info-panel-footer" id="info-footer"></div>
+  </div>
 `;
 
 const mapElement = document.querySelector("#map");
@@ -43,6 +55,47 @@ const statsStrip = document.querySelector("#stats-strip");
 const quizToggleBtn = document.querySelector("#quiz-toggle");
 const quizOverlay = document.querySelector("#quiz-overlay");
 const quizContainer = document.querySelector("#quiz-container");
+const infoPanel = document.querySelector("#info-panel");
+const infoTitle = document.querySelector("#info-title");
+const infoBody = document.querySelector("#info-body");
+const infoFooter = document.querySelector("#info-footer");
+const infoClose = document.querySelector("#info-close");
+
+// Info panel
+let wikiLoaded = false;
+
+function showInfoPanel(adcode, name) {
+  if (!wikiLoaded) return;
+
+  const summary = getWikiSummary(adcode);
+  infoTitle.textContent = name;
+
+  if (summary) {
+    infoBody.innerHTML = `<p class="info-extract">${summary.extract}</p>`;
+    infoFooter.innerHTML = `<a class="info-wiki-link" href="${summary.url}" target="_blank" rel="noopener noreferrer">查看维基百科 →</a>`;
+  } else {
+    infoBody.innerHTML = `<p class="info-extract info-extract-empty">暂无简介信息</p>`;
+    infoFooter.innerHTML = "";
+  }
+
+  infoPanel.classList.remove("hidden");
+}
+
+function hideInfoPanel() {
+  infoPanel.classList.add("hidden");
+}
+
+infoClose.addEventListener("click", hideInfoPanel);
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !infoPanel.classList.contains("hidden")) {
+    hideInfoPanel();
+  }
+});
+
+setRegionClickCallback((adcode, name) => {
+  showInfoPanel(adcode, name);
+});
 
 function refreshUI() {
   const newStats = computeStats(divisions, learnedSet);
@@ -85,6 +138,11 @@ setupResize(mapElement);
 
 onChartReady(() => {
   renderMap(learnedSet);
+});
+
+// Load wiki data
+loadWikiSummaries().then(() => {
+  wikiLoaded = true;
 });
 
 onThemeChange(() => {

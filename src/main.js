@@ -1,9 +1,9 @@
 import "./style.css";
-import { divisions, LEARNED_ADCODES } from "./data/divisions.js";
+import { divisions, LEARNED_ADCODES, PROVINCE_NAMES } from "./data/divisions.js";
 import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } from "./lib/theme.js";
 import { computeStats, renderStats } from "./lib/stats.js";
-import { loadMap, setupResize, renderMap, setRegionClickCallback, onChartReady } from "./lib/map.js";
-import { loadWikiSummaries, getWikiSummary } from "./lib/wiki.js";
+import { loadMap, setupResize, renderMap, setRegionClickCallback, setWikiCache, zoomToDivision, zoomToDefault, onChartReady } from "./lib/map.js";
+import { loadWikiSummaries, getWikiSummary, getWikiCache } from "./lib/wiki.js";
 import * as quiz from "./lib/quiz.js";
 
 const learnedSet = new Set(LEARNED_ADCODES);
@@ -39,12 +39,14 @@ app.innerHTML = `
   </div>
 
   <div id="info-panel" class="info-panel glass hidden">
+    <div class="info-panel-handle"></div>
     <div class="info-panel-header">
       <h2 class="info-panel-title" id="info-title"></h2>
       <button class="info-panel-close" id="info-close" type="button" aria-label="关闭">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
+    <div class="info-panel-tags" id="info-tags"></div>
     <div class="info-panel-body" id="info-body"></div>
     <div class="info-panel-footer" id="info-footer"></div>
   </div>
@@ -57,6 +59,7 @@ const quizOverlay = document.querySelector("#quiz-overlay");
 const quizContainer = document.querySelector("#quiz-container");
 const infoPanel = document.querySelector("#info-panel");
 const infoTitle = document.querySelector("#info-title");
+const infoTags = document.querySelector("#info-tags");
 const infoBody = document.querySelector("#info-body");
 const infoFooter = document.querySelector("#info-footer");
 const infoClose = document.querySelector("#info-close");
@@ -64,11 +67,26 @@ const infoClose = document.querySelector("#info-close");
 // Info panel
 let wikiLoaded = false;
 
+function findDivision(adcode) {
+  return divisions.find((d) => d.adcode === adcode);
+}
+
 function showInfoPanel(adcode, name) {
   if (!wikiLoaded) return;
 
   const summary = getWikiSummary(adcode);
+  const div = findDivision(adcode);
+  const isLearned = learnedSet.has(adcode);
+
   infoTitle.textContent = name;
+
+  // Tags: province + learned status
+  let tagsHtml = "";
+  if (div && PROVINCE_NAMES[div.provinceAdcode]) {
+    tagsHtml += `<span class="info-tag">${PROVINCE_NAMES[div.provinceAdcode]}</span>`;
+  }
+  tagsHtml += `<span class="info-tag ${isLearned ? "tag-learned" : "tag-unlearned"}">${isLearned ? "✓ 已学习" : "未学习"}</span>`;
+  infoTags.innerHTML = tagsHtml;
 
   if (summary) {
     infoBody.innerHTML = `<p class="info-extract">${summary.extract}</p>`;
@@ -79,10 +97,12 @@ function showInfoPanel(adcode, name) {
   }
 
   infoPanel.classList.remove("hidden");
+  zoomToDivision(adcode);
 }
 
 function hideInfoPanel() {
   infoPanel.classList.add("hidden");
+  zoomToDefault();
 }
 
 infoClose.addEventListener("click", hideInfoPanel);
@@ -94,7 +114,14 @@ document.addEventListener("keydown", (e) => {
 });
 
 setRegionClickCallback((adcode, name) => {
-  showInfoPanel(adcode, name);
+  if (adcode && name) {
+    showInfoPanel(adcode, name);
+  } else {
+    // Clicked on empty area
+    if (!infoPanel.classList.contains("hidden")) {
+      hideInfoPanel();
+    }
+  }
 });
 
 function refreshUI() {
@@ -143,6 +170,7 @@ onChartReady(() => {
 // Load wiki data
 loadWikiSummaries().then(() => {
   wikiLoaded = true;
+  setWikiCache(getWikiCache());
 });
 
 onThemeChange(() => {

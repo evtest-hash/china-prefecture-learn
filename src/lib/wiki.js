@@ -17,3 +17,7 @@ export function getWikiSummary(adcode) {
   if (!cache) return null;
   return cache[adcode] || null;
 }
+
+export function getWikiCache() {
+  return cache;
+}

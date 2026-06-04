@@ -18,10 +18,17 @@ let currentQuizHighlight = null;
 let onRegionClickCallback = null;
 
 const nameToAdcode = new Map();
+const adcodeToName = new Map();
 const provinceBounds = new Map();
+const divisionBounds = new Map();
+let wikiCache = null;
 
 export function setRegionClickCallback(fn) {
   onRegionClickCallback = fn;
+}
+
+export function setWikiCache(cache) {
+  wikiCache = cache;
 }
 
 export async function loadMap(mapElement) {
@@ -31,12 +38,15 @@ export async function loadMap(mapElement) {
     const geoJson = await response.json();
 
     nameToAdcode.clear();
+    adcodeToName.clear();
     const provFeatures = new Map();
 
     for (const feature of geoJson.features) {
       const props = feature.properties;
+      const adcode = String(props.adcode);
       if (props.name) {
-        nameToAdcode.set(props.name, String(props.adcode));
+        nameToAdcode.set(props.name, adcode);
+        adcodeToName.set(adcode, props.name);
       }
 
       const provAdcode = resolveProvinceAdcode(props);
@@ -60,6 +70,24 @@ export async function loadMap(mapElement) {
         }
       }
       provinceBounds.set(provAdcode, {
+        minLng, maxLng, minLat, maxLat,
+        center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
+      });
+    }
+
+    // Compute per-division bounding boxes
+    for (const feature of geoJson.features) {
+      const coords = extractCoords(feature.geometry);
+      if (coords.length === 0) continue;
+      let minLng = Infinity, maxLng = -Infinity;
+      let minLat = Infinity, maxLat = -Infinity;
+      for (const [lng, lat] of coords) {
+        if (lng < minLng) minLng = lng;
+        if (lng > maxLng) maxLng = lng;
+        if (lat < minLat) minLat = lat;
+        if (lat > maxLat) maxLat = lat;
+      }
+      divisionBounds.set(String(feature.properties.adcode), {
         minLng, maxLng, minLat, maxLat,
         center: [(minLng + maxLng) / 2, (minLat + maxLat) / 2],
       });
@@ -106,10 +134,27 @@ async function initChart(mapElement) {
     chart = echarts.init(mapElement, null, { renderer: "canvas" });
     chart.on("click", (params) => {
       if (currentQuizHighlight) return;
-      if (params.componentType !== "geo") return;
-      const adcode = nameToAdcode.get(params.name);
-      if (adcode && onRegionClickCallback) {
-        onRegionClickCallback(adcode, params.name);
+      if (params.componentType === "geo") {
+        const adcode = nameToAdcode.get(params.name);
+        if (adcode && onRegionClickCallback) {
+          onRegionClickCallback(adcode, params.name);
+        }
+      } else {
+        // Clicked on empty area
+        if (onRegionClickCallback) {
+          onRegionClickCallback(null, null);
+        }
+      }
+    });
+    // Cursor: pointer on region hover, grab on empty
+    chart.on("mouseover", (params) => {
+      if (!currentQuizHighlight && params.componentType === "geo") {
+        mapElement.style.cursor = "pointer";
+      }
+    });
+    chart.on("mouseout", () => {
+      if (!currentQuizHighlight) {
+        mapElement.style.cursor = "grab";
       }
     });
     chartReady = true;
@@ -186,6 +231,49 @@ function getProvinceZoom(provinceAdcode) {
     center: bounds.center,
     zoom: Math.max(3, Math.min(zoom, 20)),
   };
+}
+
+function getDivisionZoom(adcode) {
+  const bounds = divisionBounds.get(adcode);
+  if (!bounds) return null;
+
+  const lngSpan = bounds.maxLng - bounds.minLng;
+  const latSpan = bounds.maxLat - bounds.minLat;
+  const padFactor = 2.0; // Show some context around the division
+  const zoomByLng = CHINA_LNG_SPAN / (lngSpan * padFactor);
+  const zoomByLat = CHINA_LAT_SPAN / (latSpan * padFactor);
+  const zoom = Math.min(zoomByLng, zoomByLat) * 0.85;
+
+  return {
+    center: bounds.center,
+    zoom: Math.max(3, Math.min(zoom, 20)),
+  };
+}
+
+export function zoomToDivision(adcode) {
+  if (!chart) return;
+  const dz = getDivisionZoom(adcode);
+  if (!dz) return;
+  chart.setOption({
+    geo: { center: dz.center, zoom: dz.zoom },
+    animationDurationUpdate: 600,
+    animationEasingUpdate: "cubicInOut",
+  });
+}
+
+export function zoomToDefault() {
+  if (!chart) return;
+  const layout = getDefaultLayout();
+  chart.setOption({
+    geo: {
+      center: undefined,
+      zoom: layout.zoom,
+      layoutCenter: layout.layoutCenter,
+      layoutSize: layout.layoutSize,
+    },
+    animationDurationUpdate: 600,
+    animationEasingUpdate: "cubicInOut",
+  });
 }
 
 export function renderMap(learnedSet, quizHighlight = null) {
@@ -265,7 +353,21 @@ export function renderMap(learnedSet, quizHighlight = null) {
             const learned = learnedSet.has(adcode);
             const status = learned ? "✓ 已学习" : "未学习";
             const statusColor = learned ? theme.mapActive : theme.tooltipText;
-            return `<strong>${params.name}</strong><br/><span style="color:${statusColor}">${status}</span>`;
+            let html = `<strong>${params.name}</strong>`;
+            // Province tag
+            const feature = findFeature(params.name);
+            if (feature) {
+              const provAdcode = resolveProvinceAdcode(feature.properties);
+              const provName = PROVINCE_NAMES[provAdcode];
+              if (provName) html += `<span style="margin-left:6px;font-size:11px;color:${theme.mapBase === '#dde5ef' ? '#64748b' : '#94a3b8'}">${provName}</span>`;
+            }
+            // Wiki preview
+            if (wikiCache && wikiCache[adcode]) {
+              const preview = wikiCache[adcode].extract.substring(0, 50);
+              html += `<br/><span style="font-size:12px;color:${theme.tooltipText};opacity:0.7">${preview}…</span>`;
+            }
+            html += `<br/><span style="color:${statusColor}">${status}</span>`;
+            return html;
           },
         },
     geo: {
@@ -286,7 +388,7 @@ export function renderMap(learnedSet, quizHighlight = null) {
       itemStyle: {
         areaColor: theme.mapBase,
         borderColor: theme.mapBorder,
-        borderWidth: 0.8,
+        borderWidth: 0.5,
       },
       emphasis: quizHighlight
         ? {

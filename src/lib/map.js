@@ -15,6 +15,7 @@ let mapLoaded = false;
 let mapInitInFlight = false;
 let resizeFrame = 0;
 let currentQuizHighlight = null;
+let currentHighlightAdcode = null;
 let onRegionClickCallback = null;
 
 const nameToAdcode = new Map();
@@ -29,6 +30,10 @@ export function setRegionClickCallback(fn) {
 
 export function setWikiCache(cache) {
   wikiCache = cache;
+}
+
+export function setDivisionHighlight(adcode) {
+  currentHighlightAdcode = adcode;
 }
 
 export async function loadMap(mapElement) {
@@ -283,7 +288,7 @@ export function renderMap(learnedSet, quizHighlight = null) {
   const theme = readChartTheme();
   const defaultLayout = getDefaultLayout();
 
-  // Determine if we should zoom to a province
+  // Determine geo center/zoom
   let geoCenter = defaultLayout.layoutCenter;
   let geoZoom = defaultLayout.zoom;
 
@@ -292,6 +297,13 @@ export function renderMap(learnedSet, quizHighlight = null) {
     if (provZoom) {
       geoCenter = provZoom.center;
       geoZoom = provZoom.zoom;
+    }
+  } else if (currentHighlightAdcode) {
+    // When info panel is open, use the highlighted division's zoom instead of default
+    const dz = getDivisionZoom(currentHighlightAdcode);
+    if (dz) {
+      geoCenter = dz.center;
+      geoZoom = dz.zoom;
     }
   }
 
@@ -326,6 +338,17 @@ export function renderMap(learnedSet, quizHighlight = null) {
           emphasis: { itemStyle: { areaColor: theme.mapBase } },
         });
       }
+    } else if (adcode === currentHighlightAdcode) {
+      // Selected region highlight (info panel open) — overrides learned style
+      regions.push({
+        name,
+        itemStyle: {
+          areaColor: theme.mapActive,
+          borderColor: theme.tooltipBackground === '#fff' ? '#2563eb' : '#60a5fa',
+          borderWidth: 2.5,
+        },
+        emphasis: { itemStyle: { areaColor: theme.mapActive } },
+      });
     } else if (isLearned) {
       regions.push({
         name,
@@ -333,6 +356,51 @@ export function renderMap(learnedSet, quizHighlight = null) {
         emphasis: { itemStyle: { areaColor: theme.mapActive } },
       });
     }
+  }
+
+  // Build geo option settings
+  const geoOption = {
+    map: "china-prefecture",
+    roam: true,
+    scaleLimit: { min: 0.8, max: 20 },
+    selectedMode: false,
+    itemStyle: {
+      areaColor: theme.mapBase,
+      borderColor: theme.mapBorder,
+      borderWidth: 0.5,
+    },
+    emphasis: quizHighlight
+      ? {
+          itemStyle: { areaColor: theme.mapBase },
+          label: { show: false },
+        }
+      : {
+          itemStyle: { areaColor: theme.mapHover },
+          label: {
+            show: true,
+            color: theme.tooltipText,
+            fontSize: 12,
+            fontWeight: 500,
+          },
+        },
+    regions,
+  };
+
+  // When info panel is open (division highlighted), use merge mode for geo
+  // to avoid snapping — skip center/zoom, let zoomToDivision handle animation
+  if (currentHighlightAdcode && !quizHighlight) {
+    // skip center/zoom — preserve current view, only update regions/styles
+  } else {
+    geoOption.center = Array.isArray(geoCenter) && typeof geoCenter[0] === "number"
+      ? geoCenter
+      : undefined;
+    geoOption.zoom = geoZoom;
+    geoOption.layoutCenter = Array.isArray(geoCenter) && typeof geoCenter[0] === "string"
+      ? geoCenter
+      : undefined;
+    geoOption.layoutSize = Array.isArray(geoCenter) && typeof geoCenter[0] === "string"
+      ? defaultLayout.layoutSize
+      : undefined;
   }
 
   const option = {
@@ -370,46 +438,14 @@ export function renderMap(learnedSet, quizHighlight = null) {
             return html;
           },
         },
-    geo: {
-      map: "china-prefecture",
-      roam: true,
-      center: Array.isArray(geoCenter) && typeof geoCenter[0] === "number"
-        ? geoCenter
-        : undefined,
-      zoom: geoZoom,
-      layoutCenter: Array.isArray(geoCenter) && typeof geoCenter[0] === "string"
-        ? geoCenter
-        : undefined,
-      layoutSize: Array.isArray(geoCenter) && typeof geoCenter[0] === "string"
-        ? defaultLayout.layoutSize
-        : undefined,
-      scaleLimit: { min: 0.8, max: 20 },
-      selectedMode: false,
-      itemStyle: {
-        areaColor: theme.mapBase,
-        borderColor: theme.mapBorder,
-        borderWidth: 0.5,
-      },
-      emphasis: quizHighlight
-        ? {
-            itemStyle: { areaColor: theme.mapBase },
-            label: { show: false },
-          }
-        : {
-            itemStyle: { areaColor: theme.mapHover },
-            label: {
-              show: true,
-              color: theme.tooltipText,
-              fontSize: 12,
-              fontWeight: 500,
-            },
-          },
-      regions,
-    },
+    geo: geoOption,
     series: [],
   };
 
-  chart.setOption(option, true);
+  // Use merge mode when a division is highlighted to preserve smooth zoom animation.
+  // Use full replace (notMerge) otherwise for clean state resets.
+  const isInfoPanelOpen = !!currentHighlightAdcode && !quizHighlight;
+  chart.setOption(option, { notMerge: !isInfoPanelOpen });
 }
 
 // Cache for feature lookups by name

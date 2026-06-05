@@ -2,7 +2,7 @@ import "./style.css";
 import { divisions, LEARNED_ADCODES, PROVINCE_NAMES } from "./data/divisions.js";
 import { getThemeButtons, renderThemeButton, handleThemeClick, onThemeChange } from "./lib/theme.js";
 import { computeStats, renderStats } from "./lib/stats.js";
-import { loadMap, setupResize, renderMap, setRegionClickCallback, setWikiCache, zoomToDivision, zoomToDefault, onChartReady } from "./lib/map.js";
+import { loadMap, setupResize, renderMap, setRegionClickCallback, setWikiCache, setDivisionHighlight, zoomToDivision, zoomToDefault, onChartReady } from "./lib/map.js";
 import { loadWikiSummaries, getWikiSummary, getWikiCache } from "./lib/wiki.js";
 import * as quiz from "./lib/quiz.js";
 
@@ -97,11 +97,15 @@ function showInfoPanel(adcode, name) {
   }
 
   infoPanel.classList.remove("hidden");
+  setDivisionHighlight(adcode);
+  renderMap(learnedSet, quiz.getQuizHighlight());
   zoomToDivision(adcode);
 }
 
 function hideInfoPanel() {
   infoPanel.classList.add("hidden");
+  setDivisionHighlight(null);
+  renderMap(learnedSet, quiz.getQuizHighlight());
   zoomToDefault();
 }
 

@@ -1,38 +1,38 @@
 /* ── Glassmorphism Full-Screen Map UI ── */
 
 :root {
-  /* map tones — Google Maps inspired */
-  --map-bg-start: #e8e4df;
-  --map-bg-end: #d4d0cb;
+  /* map tones — lively & vibrant */
+  --map-bg-start: #dbeafe;
+  --map-bg-end: #bfdbfe;
   /* glass panel */
-  --glass-bg: rgba(255, 255, 255, 0.75);
-  --glass-border: rgba(255, 255, 255, 0.7);
-  --glass-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  --glass-blur: 18px;
+  --glass-bg: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.85);
+  --glass-shadow: 0 4px 20px rgba(37, 99, 235, 0.08);
+  --glass-blur: 20px;
   /* text */
-  --text: #1a1a1a;
-  --text-soft: #5f6368;
-  --text-muted: #9aa0a6;
+  --text: #0c0c0c;
+  --text-soft: #475569;
+  --text-muted: #94a3b8;
   /* accent */
-  --accent: #1a73e8;
-  --accent-soft: rgba(26, 115, 232, 0.08);
-  --accent-hover: #1557b0;
-  --learned: #1a73e8;
-  --learned-soft: rgba(26, 115, 232, 0.15);
+  --accent: #2563eb;
+  --accent-soft: rgba(37, 99, 235, 0.10);
+  --accent-hover: #1d4ed8;
+  --learned: #2563eb;
+  --learned-soft: rgba(37, 99, 235, 0.18);
   /* interactive */
-  --hover-bg: rgba(0, 0, 0, 0.04);
+  --hover-bg: rgba(0, 0, 0, 0.05);
   /* chart */
   --chart-tooltip-bg: #fff;
   --chart-tooltip-border: rgba(0, 0, 0, 0.08);
-  --chart-tooltip-text: #1a1a1a;
-  --chart-map-base: #f2efe9;
-  --chart-map-border: rgba(0, 0, 0, 0.08);
-  --chart-map-hover: #e8e4de;
-  --chart-map-active: rgba(26, 115, 232, 0.22);
-  --chart-quiz-highlight: #ea4335;
-  --chart-quiz-glow: rgba(234, 67, 53, 0.25);
-  --quiz-correct: #34a853;
-  --quiz-wrong: #ea4335;
+  --chart-tooltip-text: #1e293b;
+  --chart-map-base: #f1f5f9;
+  --chart-map-border: rgba(100, 116, 139, 0.20);
+  --chart-map-hover: #e2e8f0;
+  --chart-map-active: rgba(37, 99, 235, 0.20);
+  --chart-quiz-highlight: #dc2626;
+  --chart-quiz-glow: rgba(220, 38, 38, 0.25);
+  --quiz-correct: #16a34a;
+  --quiz-wrong: #dc2626;
   /* radius */
   --radius: 14px;
   --radius-lg: 20px;
@@ -47,31 +47,31 @@
 }
 
 :root[data-theme="dark"] {
-  --map-bg-start: #0f0f0f;
-  --map-bg-end: #0a0a0a;
-  --glass-bg: rgba(30, 30, 30, 0.82);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-  --text: #e8eaed;
-  --text-soft: #9aa0a6;
-  --text-muted: #5f6368;
-  --accent: #8ab4f8;
-  --accent-soft: rgba(138, 180, 248, 0.10);
-  --accent-hover: #aecbfa;
-  --learned: #8ab4f8;
-  --learned-soft: rgba(138, 180, 248, 0.12);
-  --hover-bg: rgba(255, 255, 255, 0.05);
-  --chart-tooltip-bg: #2a2a2a;
-  --chart-tooltip-border: rgba(255, 255, 255, 0.10);
-  --chart-tooltip-text: #e8eaed;
-  --chart-map-base: #242424;
-  --chart-map-border: rgba(255, 255, 255, 0.06);
-  --chart-map-hover: #2e2e2e;
-  --chart-map-active: rgba(138, 180, 248, 0.22);
-  --chart-quiz-highlight: #f28b82;
-  --chart-quiz-glow: rgba(242, 139, 130, 0.20);
-  --quiz-correct: #81c995;
-  --quiz-wrong: #f28b82;
+  --map-bg-start: #0f172a;
+  --map-bg-end: #070b18;
+  --glass-bg: rgba(15, 23, 42, 0.85);
+  --glass-border: rgba(148, 163, 184, 0.12);
+  --glass-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --text: #f1f5f9;
+  --text-soft: #94a3b8;
+  --text-muted: #64748b;
+  --accent: #60a5fa;
+  --accent-soft: rgba(96, 165, 250, 0.12);
+  --accent-hover: #93c5fd;
+  --learned: #60a5fa;
+  --learned-soft: rgba(96, 165, 250, 0.18);
+  --hover-bg: rgba(255, 255, 255, 0.06);
+  --chart-tooltip-bg: #1e293b;
+  --chart-tooltip-border: rgba(148, 163, 184, 0.15);
+  --chart-tooltip-text: #f1f5f9;
+  --chart-map-base: #1e293b;
+  --chart-map-border: rgba(148, 163, 184, 0.10);
+  --chart-map-hover: #334155;
+  --chart-map-active: rgba(96, 165, 250, 0.20);
+  --chart-quiz-highlight: #f87171;
+  --chart-quiz-glow: rgba(248, 113, 113, 0.25);
+  --quiz-correct: #4ade80;
+  --quiz-wrong: #f87171;
   color-scheme: dark;
 }
 

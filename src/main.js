@@ -71,9 +71,7 @@ function findDivision(adcode) {
   return divisions.find((d) => d.adcode === adcode);
 }
 
-function showInfoPanel(adcode, name) {
-  if (!wikiLoaded) return;
-
+function fillInfoPanelContent(adcode, name) {
   const summary = getWikiSummary(adcode);
   const div = findDivision(adcode);
   const isLearned = learnedSet.has(adcode);
@@ -97,6 +95,17 @@ function showInfoPanel(adcode, name) {
   }
 
   infoPanel.classList.remove("hidden");
+}
+
+function showQuizRegionInfo(adcode, name) {
+  if (!wikiLoaded) return;
+  fillInfoPanelContent(adcode, name);
+  // Map interactions intentionally skipped — quiz manages its own map state
+}
+
+function showInfoPanel(adcode, name) {
+  if (!wikiLoaded) return;
+  fillInfoPanelContent(adcode, name);
   setDivisionHighlight(adcode);
   renderMap(learnedSet, quiz.getQuizHighlight());
   zoomToDivision(adcode);
@@ -185,6 +194,8 @@ function showQuizOverlay() {
   quizOverlay.classList.remove("hidden");
   quizOverlay.classList.add("quiz-start-overlay");
   quizContainer.innerHTML = quiz.renderQuizUI();
+  // Hide stale info panel left from map browsing when quiz starts
+  infoPanel.classList.add("hidden");
   const input = quizContainer.querySelector("#quiz-answer");
   if (input) input.focus();
 }
@@ -193,6 +204,7 @@ function hideQuizOverlay() {
   quizOverlay.classList.add("hidden");
   quizOverlay.classList.remove("quiz-start-overlay");
   quizContainer.innerHTML = "";
+  infoPanel.classList.add("hidden");
 }
 
 let wrongAutoNextTimer = null;
@@ -208,11 +220,20 @@ function renderQuizOverlay() {
   clearTimeout(wrongAutoNextTimer);
   wrongAutoNextTimer = null;
 
+  const answered = state.active && state.answered && state.current;
+
+  // Show region introduction in the info panel after answering.
+  // Keep the panel visible between questions so the user can continue reading
+  // until they answer the next question.
+  if (answered) {
+    showQuizRegionInfo(state.current.adcode, state.current.name);
+  }
+
   quizContainer.innerHTML = quiz.renderQuizUI();
   const input = quizContainer.querySelector("#quiz-answer");
   if (input) input.focus();
 
-  if (state.active && state.answered && state.current) {
+  if (answered) {
     const lastResult = state.results[state.results.length - 1];
     if (lastResult && !lastResult.correct) {
       wrongAutoNextTimer = setTimeout(() => {
